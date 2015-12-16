@@ -9,13 +9,45 @@
 #import "StatusBar.h"
 #import <Cordova/CDV.h>
 
-@interface StatusBar()
+@interface StatusBar () <UIScrollViewDelegate>
 
+@property NSString* eventsCallbackId;
+- (void)fireTappedEvent;
+- (void)setTapListener:(CDVInvokedUrlCommand*)command;
 - (void)_sendPluginResult:(CDVInvokedUrlCommand*)command;
 
 @end
 
 @implementation StatusBar
+
+- (void)pluginInitialize
+{
+  // blank scroll view to intercept status bar taps
+  self.webView.scrollView.scrollsToTop = NO;
+  UIScrollView *fakeScrollView = [[UIScrollView alloc] initWithFrame:UIScreen.mainScreen.bounds];
+  fakeScrollView.delegate = self;
+  fakeScrollView.scrollsToTop = YES;
+  [self.viewController.view addSubview:fakeScrollView]; // Add scrollview to the view heirarchy so that it will begin accepting status bar taps
+  [self.viewController.view sendSubviewToBack:fakeScrollView]; // Send it to the very back of the view heirarchy
+  fakeScrollView.contentSize = CGSizeMake(UIScreen.mainScreen.bounds.size.width, UIScreen.mainScreen.bounds.size.height * 2.0f); // Make the scroll view longer than the screen itself
+  fakeScrollView.contentOffset = CGPointMake(0.0f, UIScreen.mainScreen.bounds.size.height); // Scroll down so a tap will take scroll view back to the top
+}
+
+- (void)fireTappedEvent
+{
+  if (_eventsCallbackId == nil) {
+    return;
+  }
+  NSDictionary* payload = @{@"type": @"tap"};
+  CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:payload];
+  [result setKeepCallbackAsBool:YES];
+  [self.commandDelegate sendPluginResult:result callbackId:_eventsCallbackId];
+}
+
+- (void)setTapListener:(CDVInvokedUrlCommand*)command
+{
+  _eventsCallbackId = command.callbackId;
+}
 
 - (void)hideStatusBar:(CDVInvokedUrlCommand*)command
 {
@@ -36,7 +68,7 @@
   {
     [self toggleStatusBar:command];
   }
-  
+
   // Send the result (the height of the statusbar)
   [self _sendPluginResult:command];
 }
@@ -73,7 +105,7 @@
 
   // Set the style
   [[UIApplication sharedApplication] setStatusBarStyle:style animated:animate];
-  
+
   // Send the result (the height of the statusbar)
   [self _sendPluginResult:command];
 }
@@ -99,6 +131,12 @@
   // Create and send the plugin result
   pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDouble:height];
   [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
+- (BOOL)scrollViewShouldScrollToTop:(UIScrollView*)scrollView
+{
+  [self fireTappedEvent];
+  return NO;
 }
 
 @end

@@ -10,7 +10,7 @@ StatusBar.AnimationSlide = "slide";
 StatusBar.AnimationFade = "fade";
 StatusBar.AnimationNone = "none";
 // style of the statusbar
-// see details at: 
+// see details at:
 // https://developer.apple.com/library/ios/documentation/uikit/reference/UIApplication_Class/Reference/Reference.html#//apple_ref/doc/c_ref/UIStatusBarStyle
 // defaults to default :D
 StatusBar.StyleDefault = "default";
@@ -67,6 +67,12 @@ sbproto.setStyle = function(style, success, error, opts) {
 sbproto.height = function(success, error) {
     exec(success, error, "StatusBar", "height", []);
 };
+
+exec(function (res) {
+  if (typeof res === 'object' && res.type === 'tap') {
+    cordova.fireWindowEvent('statusTap');
+  }
+}, null, 'StatusBar', 'setTapListener', []);
 
 module.exports = StatusBar;
 })();
